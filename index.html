@@ -357,7 +357,7 @@
   // ── HUD ──
   function updateHUD() {
     scoreDisplay.textContent = score;
-    goalBar.style.width = Math.min(100, (score / SCORE_WIN) * 100) + '%';
+    if (goalBar) goalBar.style.width = Math.min(100, (score / SCORE_WIN) * 100) + '%';
     hearts.forEach((h, i) => h.classList.toggle('lost', i >= lives));
   }
 
