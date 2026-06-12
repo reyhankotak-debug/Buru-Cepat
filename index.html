@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circle Rush</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #111111;
+      --surface: #1c1c1c;
+      --border: #2e2e2e;
+      --text-primary: #f0f0f0;
+      --text-secondary: #888888;
+      --accent: #ffffff;
+      --font: 'Courier New', Courier, monospace;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+    }
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 500px;
+      padding: 32px 24px;
+      animation: fadeIn .25s ease;
+    }
+    .screen.active { display: flex; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    .title { font-size: 2.4rem; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; color: var(--accent); }
+    .subtitle { font-size: 0.7rem; letter-spacing: 3px; color: var(--text-secondary); text-transform: uppercase; }
+    .divider { width: 100%; height: 1px; background: var(--border); }
+
+    .rules {
+      width: 100%; background: var(--surface);
+      border: 1px solid var(--border); padding: 18px;
+      font-size: 0.78rem; line-height: 2; color: var(--text-secondary);
+    }
+    .rules span { color: var(--text-primary); }
+
+    /* Buttons */
+    .btn {
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text-primary); font-family: var(--font);
+      font-size: 0.78rem; letter-spacing: 3px; text-transform: uppercase;
+      padding: 13px 36px; cursor: pointer;
+      transition: background .15s, color .15s, border-color .15s;
+      width: 100%;
+    }
+    .btn:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .btn.secondary { color: var(--text-secondary); }
+    .btn.secondary:hover { background: var(--text-secondary); color: var(--bg); border-color: var(--text-secondary); }
+    .btn.danger { color: #ff6b6b; border-color: #ff6b6b33; }
+    .btn.danger:hover { background: #ff6b6b; color: var(--bg); border-color: #ff6b6b; }
+    .btn-row { display: flex; gap: 12px; width: 100%; }
+
+    /* Input */
+    .input-group { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+    .input-label { font-size: 0.65rem; letter-spacing: 3px; color: var(--text-secondary); text-transform: uppercase; }
+    input, textarea {
+      width: 100%; background: var(--surface);
+      border: 1px solid var(--border); color: var(--text-primary);
+      font-family: var(--font); font-size: 0.85rem;
+      padding: 12px 16px; outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 80px; }
+    .error-msg { font-size: 0.7rem; color: #ff6b6b; letter-spacing: 1px; min-height: 16px; }
+
+    /* HUD */
+    .hud { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .hud-block { text-align: center; }
+    .hud-label { font-size: 0.6rem; letter-spacing: 3px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; }
+    .hud-value { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    .lives { display: flex; gap: 8px; align-items: center; }
+    .heart { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); transition: background .2s, transform .2s; }
+    .heart.lost { background: #333; transform: scale(.7); }
+
+    /* Arena */
+    #arena {
+      position: relative; width: 100%; height: 380px;
+      border: 1px solid var(--border); background: var(--surface);
+      overflow: hidden; cursor: crosshair;
+    }
+    .circle {
+      position: absolute; border-radius: 50%; border: 2px solid var(--accent);
+      background: transparent; transform: translate(-50%,-50%); cursor: pointer;
+      transition: border-color .1s;
+    }
+    .circle:hover { background: rgba(255,255,255,.07); }
+    .circle svg { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events: none; }
+    @keyframes missFlash { 0% { background: rgba(150,150,150,.15); } 100% { background: var(--surface); } }
+    #arena.miss { animation: missFlash .35s ease; }
+    .burst {
+      position: absolute; border-radius: 50%; border: 2px solid #888;
+      pointer-events: none; transform: translate(-50%,-50%);
+      animation: burstAnim .4s ease forwards;
+    }
+    @keyframes burstAnim {
+      0%   { opacity:1; width:var(--sz); height:var(--sz); }
+      100% { opacity:0; width:calc(var(--sz)*2); height:calc(var(--sz)*2); }
+    }
+    .goal-bar-wrap { width: 100%; height: 3px; background: var(--border); }
+    .goal-bar-fill { height: 100%; background: var(--accent); transition: width .2s; }
+    .player-badge {
+      font-size: 0.65rem; letter-spacing: 2px; color: var(--text-secondary);
+      text-transform: uppercase; width: 100%; text-align: right;
+    }
+    .player-badge span { color: var(--accent); }
+
+    /* Result */
+    .result-score { font-size: 3rem; font-weight: 700; color: var(--accent); letter-spacing: 4px; }
+    .result-label { font-size: 0.65rem; letter-spacing: 4px; color: var(--text-secondary); text-transform: uppercase; }
+    .result-msg { font-size: 0.85rem; color: var(--text-secondary); letter-spacing: 1px; text-align: center; line-height: 1.9; white-space: pre-line; }
+
+    /* Leaderboard */
+    .section-title {
+      font-size: 0.65rem; letter-spacing: 4px; color: var(--text-secondary);
+      text-transform: uppercase; width: 100%; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .leaderboard { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+    .lb-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; background: var(--surface); border: 1px solid var(--border);
+      font-size: 0.78rem;
+    }
+    .lb-row.highlight { border-color: var(--accent); }
+    .lb-rank { font-size: 0.65rem; color: var(--text-secondary); width: 20px; text-align: center; }
+    .lb-name { flex: 1; color: var(--text-primary); }
+    .lb-score { font-weight: 700; color: var(--accent); }
+    .lb-empty { font-size: 0.75rem; color: var(--text-secondary); text-align: center; padding: 16px; width: 100%; }
+
+    /* Dev screen */
+    .msg-list { width: 100%; display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+    .msg-card {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .msg-meta { display: flex; justify-content: space-between; }
+    .msg-player { font-size: 0.7rem; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
+    .msg-time { font-size: 0.65rem; color: var(--text-secondary); }
+    .msg-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.7; }
+    .msg-empty { font-size: 0.75rem; color: var(--text-secondary); text-align: center; padding: 24px; }
+
+    .loading-text { font-size: 0.7rem; letter-spacing: 2px; color: var(--text-secondary); text-transform: uppercase; }
+
+    @media (max-width: 420px) { #arena { height: 300px; } .title { font-size: 1.8rem; } }
+  </style>
+</head>
+<body>
+
+<!-- ── START SCREEN ── -->
+<div id="startScreen" class="screen active">
+  <div style="text-align:center">
+    <div class="subtitle">imk game project</div>
+    <div class="title">Circle<br>Rush</div>
+  </div>
+  <div class="divider"></div>
+  <div class="rules">
+    → Tekan lingkaran sebelum <span>menghilang</span><br>
+    → Setiap tekan = <span>+10 poin</span><br>
+    → Lewat tanpa tekan = <span>−1 nyawa</span><br>
+    → Kamu punya <span>3 nyawa</span><br>
+    → Capai <span>1000 poin</span> untuk menang
+  </div>
+  <button class="btn" id="startBtn">Mulai Bermain</button>
+  <button class="btn secondary" id="devLoginBtn">Developer Panel</button>
+</div>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="loginScreen" class="screen">
+  <div style="text-align:center">
+    <div class="subtitle">masuk sebagai pemain</div>
+    <div class="title" style="font-size:1.8rem">Login</div>
+  </div>
+  <div class="divider"></div>
+  <div class="input-group">
+    <div class="input-label">Nama Pemain</div>
+    <input type="text" id="nameInput" placeholder="Masukkan namamu..." maxlength="20" autocomplete="off" />
+    <div class="error-msg" id="loginError"></div>
+  </div>
+  <button class="btn" id="loginBtn">Masuk & Main</button>
+  <button class="btn secondary" id="backToStartBtn">Kembali</button>
+</div>
+
+<!-- ── GAME SCREEN ── -->
+<div id="gameScreen" class="screen">
+  <div class="player-badge">Pemain: <span id="playerBadge">—</span></div>
+  <div class="hud">
+    <div class="hud-block">
+      <div class="hud-label">Skor</div>
+      <div class="hud-value" id="scoreDisplay">0</div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">Target</div>
+      <div class="hud-value">1000</div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">Nyawa</div>
+      <div class="lives" id="livesDisplay">
+        <div class="heart" id="h1"></div>
+        <div class="heart" id="h2"></div>
+        <div class="heart" id="h3"></div>
+      </div>
+    </div>
+  </div>
+  <div class="goal-bar-wrap"><div class="goal-bar-fill" id="goalBar" style="width:0%"></div></div>
+  <div id="arena"></div>
+</div>
+
+<!-- ── RESULT SCREEN ── -->
+<div id="resultScreen" class="screen">
+  <div style="text-align:center">
+    <div class="result-label" id="resultLabel">Game Over</div>
+    <div class="result-score" id="resultScore">0</div>
+    <div class="result-label">poin</div>
+  </div>
+  <div id="bestScoreInfo" style="font-size:0.75rem;letter-spacing:2px;color:var(--text-secondary);text-align:center;"></div>
+  <div class="divider"></div>
+  <div class="result-msg" id="resultMsg"></div>
+
+  <!-- Feedback form -->
+  <div class="section-title">Pesan / Saran untuk Developer</div>
+  <div class="input-group">
+    <textarea id="feedbackInput" placeholder="Tulis saran atau kritikmu di sini..."></textarea>
+    <div class="error-msg" id="feedbackError"></div>
+  </div>
+  <button class="btn" id="sendFeedbackBtn">Kirim Pesan</button>
+
+  <div class="divider"></div>
+
+  <!-- Leaderboard -->
+  <div class="section-title">🏆 Leaderboard — Best Score</div>
+  <div class="leaderboard" id="leaderboard">
+    <div class="lb-empty">Memuat...</div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" id="replayBtn">Main Lagi</button>
+    <button class="btn secondary" id="menuBtn">Menu</button>
+  </div>
+</div>
+
+<!-- ── DEV LOGIN SCREEN ── -->
+<div id="devLoginScreen" class="screen">
+  <div style="text-align:center">
+    <div class="subtitle">akses terbatas</div>
+    <div class="title" style="font-size:1.8rem">Dev Panel</div>
+  </div>
+  <div class="divider"></div>
+  <div class="input-group">
+    <div class="input-label">Password Developer</div>
+    <input type="password" id="devPassInput" placeholder="Masukkan password..." />
+    <div class="error-msg" id="devLoginError"></div>
+  </div>
+  <button class="btn" id="devEnterBtn">Masuk</button>
+  <button class="btn secondary" id="devBackBtn">Kembali</button>
+</div>
+
+<!-- ── DEV DASHBOARD SCREEN ── -->
+<div id="devScreen" class="screen">
+  <div style="text-align:center;width:100%">
+    <div class="subtitle">developer dashboard</div>
+    <div class="title" style="font-size:1.6rem">Pesan Masuk</div>
+  </div>
+  <div class="divider"></div>
+  <div class="msg-list" id="msgList">
+    <div class="msg-empty loading-text">Memuat pesan...</div>
+  </div>
+  <div class="divider"></div>
+  <div class="section-title">🏆 Leaderboard</div>
+  <div class="leaderboard" id="devLeaderboard">
+    <div class="lb-empty">Memuat...</div>
+  </div>
+  <button class="btn secondary" id="devLogoutBtn">Keluar</button>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, addDoc,
+    collection, query, orderBy, limit, getDocs, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ── Firebase config ──
+  const firebaseConfig = {
+    apiKey: "AIzaSyAR9XIDod5NJf3pS-_fMDpDR4JHcS-B9YE",
+    authDomain: "circle-rush-1247.firebaseapp.com",
+    projectId: "circle-rush-1247",
+    storageBucket: "circle-rush-1247.firebasestorage.app",
+    messagingSenderId: "968689171968",
+    appId: "1:968689171968:web:7473d0dde74207dfae62e5",
+    measurementId: "G-6WGD7LL4F1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  const DEV_PASSWORD = "devcirclerush2025";
+
+  // ── DOM ──
+  const screens = {
+    start:    document.getElementById('startScreen'),
+    login:    document.getElementById('loginScreen'),
+    game:     document.getElementById('gameScreen'),
+    result:   document.getElementById('resultScreen'),
+    devLogin: document.getElementById('devLoginScreen'),
+    dev:      document.getElementById('devScreen'),
+  };
+
+  const arena        = document.getElementById('arena');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const goalBar      = document.getElementById('goalBar');
+  const resultLabel  = document.getElementById('resultLabel');
+  const resultScore  = document.getElementById('resultScore');
+  const resultMsg    = document.getElementById('resultMsg');
+  const bestScoreInfo = document.getElementById('bestScoreInfo');
+  const hearts       = [document.getElementById('h1'), document.getElementById('h2'), document.getElementById('h3')];
+
+  // ── Game state ──
+  let score = 0, lives = 3, activeCircle = null, spawnTimer = null, shrinkRaf = null;
+  let currentPlayer = '';
+
+  const SCORE_WIN    = 1000;
+  const SCORE_STEP   = 10;
+  const CIRCLE_MAX   = 80;
+  const CIRCLE_MIN   = 8;
+  const BASE_SHRINK  = 2600;
+  const SPAWN_DELAY  = 500;
+
+  function shrinkDuration() {
+    return BASE_SHRINK * Math.max(0.4, 1 - score / 1500);
+  }
+
+  // ── Screen manager ──
+  function showScreen(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  // ── HUD ──
+  function updateHUD() {
+    scoreDisplay.textContent = score;
+    goalBar.style.width = Math.min(100, (score / SCORE_WIN) * 100) + '%';
+    hearts.forEach((h, i) => h.classList.toggle('lost', i >= lives));
+  }
+
+  // ── Firestore helpers ──
+  async function saveScore(name, newScore) {
+    const ref = doc(db, 'players', name);
+    const snap = await getDoc(ref);
+    const prev = snap.exists() ? (snap.data().bestScore || 0) : 0;
+    if (newScore > prev) {
+      await setDoc(ref, { bestScore: newScore, updatedAt: serverTimestamp() });
+      return true; // new record
+    }
+    return false;
+  }
+
+  async function getLeaderboard() {
+    const q = query(collection(db, 'players'), orderBy('bestScore', 'desc'), limit(10));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ name: d.id, score: d.data().bestScore }));
+  }
+
+  async function sendFeedback(playerName, message) {
+    await addDoc(collection(db, 'messages'), {
+      playerName,
+      message,
+      timestamp: serverTimestamp()
+    });
+  }
+
+  async function getMessages() {
+    const q = query(collection(db, 'messages'), orderBy('timestamp', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+  }
+
+  // ── Render leaderboard ──
+  async function renderLeaderboard(containerId) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = '<div class="lb-empty loading-text">Memuat...</div>';
+    const rows = await getLeaderboard();
+    if (!rows.length) { el.innerHTML = '<div class="lb-empty">Belum ada skor.</div>'; return; }
+    el.innerHTML = rows.map((r, i) => {
+      const isMe = r.name === currentPlayer;
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+      return `<div class="lb-row ${isMe ? 'highlight' : ''}">
+        <span class="lb-rank">${medal}</span>
+        <span class="lb-name">${r.name}${isMe ? ' (kamu)' : ''}</span>
+        <span class="lb-score">${r.score}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Spawn circle ──
+  function spawnCircle() {
+    if (activeCircle) return;
+    const aW = arena.clientWidth, aH = arena.clientHeight;
+    const margin = CIRCLE_MAX + 4;
+    const cx = margin + Math.random() * (aW - margin * 2);
+    const cy = margin + Math.random() * (aH - margin * 2);
+    const duration = shrinkDuration();
+
+    const el = document.createElement('div');
+    el.className = 'circle';
+    const diameter = CIRCLE_MAX * 2;
+    el.style.cssText = `width:${diameter}px;height:${diameter}px;left:${cx}px;top:${cy}px;`;
+
+    const r = CIRCLE_MAX - 4;
+    const circ = 2 * Math.PI * r;
+    el.innerHTML = `<svg width="${diameter}" height="${diameter}">
+      <circle id="ring" cx="${CIRCLE_MAX}" cy="${CIRCLE_MAX}" r="${r}"
+        fill="none" stroke="#444" stroke-width="2"
+        stroke-dasharray="${circ}" stroke-dashoffset="0"
+        transform="rotate(-90 ${CIRCLE_MAX} ${CIRCLE_MAX})"/>
+    </svg>`;
+    arena.appendChild(el);
+    activeCircle = el;
+
+    el.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if (!activeCircle) return;
+      hitCircle(cx, cy, parseFloat(el.style.width) / 2);
+    });
+
+    const start = performance.now();
+    const ring  = el.querySelector('#ring');
+
+    function frame(now) {
+      if (!activeCircle) return;
+      const elapsed  = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const currentR = CIRCLE_MAX * (1 - progress);
+      const size = currentR * 2;
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      const rInner = currentR - 4;
+      if (rInner > 0) {
+        const c2 = 2 * Math.PI * rInner;
+        ring.setAttribute('r', rInner);
+        ring.setAttribute('cx', currentR);
+        ring.setAttribute('cy', currentR);
+        ring.setAttribute('stroke-dasharray', c2);
+        ring.setAttribute('stroke-dashoffset', c2 * (1 - progress));
+        ring.setAttribute('transform', `rotate(-90 ${currentR} ${currentR})`);
+      }
+      if (progress >= 1) { missCircle(cx, cy); return; }
+      shrinkRaf = requestAnimationFrame(frame);
+    }
+    shrinkRaf = requestAnimationFrame(frame);
+  }
+
+  function hitCircle(cx, cy, sz) {
+    cancelAnimationFrame(shrinkRaf);
+    if (activeCircle) { activeCircle.remove(); activeCircle = null; }
+    const burst = document.createElement('div');
+    burst.className = 'burst';
+    burst.style.cssText = `left:${cx}px;top:${cy}px;--sz:${sz*2}px;width:${sz*2}px;height:${sz*2}px;`;
+    arena.appendChild(burst);
+    burst.addEventListener('animationend', () => burst.remove());
+    score += SCORE_STEP;
+    updateHUD();
+    if (score >= SCORE_WIN) { endGame(true); return; }
+    spawnTimer = setTimeout(spawnCircle, SPAWN_DELAY);
+  }
+
+  function missCircle(cx, cy) {
+    cancelAnimationFrame(shrinkRaf);
+    if (activeCircle) { activeCircle.remove(); activeCircle = null; }
+    lives--;
+    updateHUD();
+    arena.classList.add('miss');
+    setTimeout(() => arena.classList.remove('miss'), 350);
+    if (lives <= 0) { endGame(false); return; }
+    spawnTimer = setTimeout(spawnCircle, SPAWN_DELAY);
+  }
+
+  async function endGame(won) {
+    clearTimeout(spawnTimer);
+    cancelAnimationFrame(shrinkRaf);
+    if (activeCircle) { activeCircle.remove(); activeCircle = null; }
+
+    // Save to Firestore
+    let isNewRecord = false;
+    try { isNewRecord = await saveScore(currentPlayer, score); } catch(e) {}
+
+    resultLabel.textContent = won ? 'Selesai! 🎉' : 'Game Over';
+    resultScore.textContent = score;
+    bestScoreInfo.textContent = isNewRecord ? '★ Rekor baru kamu!' : '';
+    resultMsg.textContent = won
+      ? `Kamu berhasil mencapai 1000 poin!\nGame selesai dengan sempurna.`
+      : `Nyawamu habis.\nSkor akhirmu adalah ${score} poin.`;
+
+    document.getElementById('feedbackInput').value = '';
+    document.getElementById('feedbackError').textContent = '';
+    showScreen('result');
+    renderLeaderboard('leaderboard');
+  }
+
+  function startGame() {
+    score = 0; lives = 3;
+    arena.innerHTML = '';
+    activeCircle = null;
+    clearTimeout(spawnTimer);
+    cancelAnimationFrame(shrinkRaf);
+    document.getElementById('playerBadge').textContent = currentPlayer;
+    updateHUD();
+    showScreen('game');
+    spawnTimer = setTimeout(spawnCircle, 300);
+  }
+
+  // ── Events: Start screen ──
+  document.getElementById('startBtn').addEventListener('click', () => showScreen('login'));
+  document.getElementById('devLoginBtn').addEventListener('click', () => {
+    document.getElementById('devPassInput').value = '';
+    document.getElementById('devLoginError').textContent = '';
+    showScreen('devLogin');
+  });
+
+  // ── Events: Login screen ──
+  document.getElementById('backToStartBtn').addEventListener('click', () => showScreen('start'));
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const name = document.getElementById('nameInput').value.trim();
+    const errEl = document.getElementById('loginError');
+    if (!name) { errEl.textContent = 'Nama tidak boleh kosong.'; return; }
+    if (name.length < 2) { errEl.textContent = 'Nama minimal 2 karakter.'; return; }
+    errEl.textContent = '';
+    currentPlayer = name;
+    startGame();
+  });
+  document.getElementById('nameInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('loginBtn').click();
+  });
+
+  // ── Events: Result screen ──
+  document.getElementById('replayBtn').addEventListener('click', startGame);
+  document.getElementById('menuBtn').addEventListener('click', () => showScreen('start'));
+
+  document.getElementById('sendFeedbackBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('feedbackInput').value.trim();
+    const errEl = document.getElementById('feedbackError');
+    const btn = document.getElementById('sendFeedbackBtn');
+    if (!msg) { errEl.textContent = 'Pesan tidak boleh kosong.'; return; }
+    errEl.textContent = '';
+    btn.textContent = 'Mengirim...';
+    btn.disabled = true;
+    try {
+      await sendFeedback(currentPlayer, msg);
+      document.getElementById('feedbackInput').value = '';
+      btn.textContent = '✓ Terkirim!';
+      setTimeout(() => { btn.textContent = 'Kirim Pesan'; btn.disabled = false; }, 2000);
+    } catch(e) {
+      errEl.textContent = 'Gagal mengirim. Coba lagi.';
+      btn.textContent = 'Kirim Pesan';
+      btn.disabled = false;
+    }
+  });
+
+  // ── Events: Dev login ──
+  document.getElementById('devBackBtn').addEventListener('click', () => showScreen('start'));
+  document.getElementById('devEnterBtn').addEventListener('click', async () => {
+    const pass = document.getElementById('devPassInput').value;
+    const errEl = document.getElementById('devLoginError');
+    if (pass !== DEV_PASSWORD) { errEl.textContent = 'Password salah.'; return; }
+    errEl.textContent = '';
+    showScreen('dev');
+    // Load messages
+    const msgList = document.getElementById('msgList');
+    msgList.innerHTML = '<div class="msg-empty loading-text">Memuat pesan...</div>';
+    try {
+      const msgs = await getMessages();
+      if (!msgs.length) { msgList.innerHTML = '<div class="msg-empty">Belum ada pesan.</div>'; }
+      else {
+        msgList.innerHTML = msgs.map(m => {
+          const ts = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleString('id-ID') : '—';
+          return `<div class="msg-card">
+            <div class="msg-meta">
+              <span class="msg-player">${m.playerName}</span>
+              <span class="msg-time">${ts}</span>
+            </div>
+            <div class="msg-text">${m.message}</div>
+          </div>`;
+        }).join('');
+      }
+    } catch(e) { msgList.innerHTML = '<div class="msg-empty">Gagal memuat pesan.</div>'; }
+    renderLeaderboard('devLeaderboard');
+  });
+  document.getElementById('devPassInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('devEnterBtn').click();
+  });
+  document.getElementById('devLogoutBtn').addEventListener('click', () => showScreen('start'));
+</script>
+</body>
+</html>
