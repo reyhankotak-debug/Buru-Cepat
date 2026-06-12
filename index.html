@@ -20,10 +20,12 @@
       color: var(--text-primary);
       font-family: var(--font);
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       min-height: 100vh;
+      min-height: -webkit-fill-available;
       user-select: none;
+      overflow-y: auto;
     }
     .screen {
       display: none;
@@ -33,6 +35,7 @@
       width: 100%;
       max-width: 500px;
       padding: 32px 24px;
+      padding-bottom: 48px;
       animation: fadeIn .25s ease;
     }
     .screen.active { display: flex; }
@@ -171,11 +174,10 @@
   <div class="divider"></div>
   <div class="rules">
     → Tekan lingkaran sebelum <span>menghilang</span><br>
-    → Setiap tekan = <span>+1 poin</span><br>
+    → Setiap tekan = <span>+10 poin</span><br>
     → Lewat tanpa tekan = <span>−1 nyawa</span><br>
     → Kamu punya <span>3 nyawa</span><br>
-    → Capai  <span>Skor tertinggi!</span>
-    <!-- → Capai <span>1000 poin</span> untuk menang -->
+    → Capai <span>1000 poin</span> untuk menang
   </div>
   <button class="btn" id="startBtn">Mulai Bermain</button>
   <button class="btn secondary" id="devLoginBtn">Developer Panel</button>
@@ -205,10 +207,10 @@
       <div class="hud-label">Skor</div>
       <div class="hud-value" id="scoreDisplay">0</div>
     </div>
-    <!-- <div class="hud-block">
-      <<div class="hud-label">Target</div>
+    <div class="hud-block">
+      <div class="hud-label">Target</div>
       <div class="hud-value">1000</div>
-    </div> -->
+    </div>
     <div class="hud-block">
       <div class="hud-label">Nyawa</div>
       <div class="lives" id="livesDisplay">
@@ -218,7 +220,7 @@
       </div>
     </div>
   </div>
-  <!-- <div class="goal-bar-wrap"><div class="goal-bar-fill" id="goalBar" style="width:0%"></div></div> -->
+  <div class="goal-bar-wrap"><div class="goal-bar-fill" id="goalBar" style="width:0%"></div></div>
   <div id="arena"></div>
 </div>
 
@@ -336,8 +338,8 @@
   let currentPlayer = '';
 
   const SCORE_WIN    = 1000;
-  const SCORE_STEP   = 1;
-  const CIRCLE_MAX   = 50;
+  const SCORE_STEP   = 10;
+  const CIRCLE_MAX   = 80;
   const CIRCLE_MIN   = 8;
   const BASE_SHRINK  = 2600;
   const SPAWN_DELAY  = 500;
