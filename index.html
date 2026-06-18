@@ -26,20 +26,41 @@
       --font-body: 'Quicksand', sans-serif;
     }
     body {
-      background: radial-gradient(circle at 50% -10%, var(--moss-light), var(--ink) 60%);
+      background: var(--ink);
       color: var(--parchment);
       font-family: var(--font-body);
       min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       user-select: none;
-      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
     }
+    #bgForest { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    #bgForest svg { width: 100%; height: 100%; display: block; }
+    .firefly { transform-origin: center; animation: fireflyPulse 3s ease-in-out infinite; }
+    @keyframes fireflyPulse { 0%, 100% { opacity: .25; transform: scale(1); } 50% { opacity: 1; transform: scale(1.5); } }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
     }
     :focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
 
-    .screen { display:none; flex-direction:column; align-items:center; gap:18px; width:100%; max-width:520px; padding:32px 22px 48px; margin:0 auto; min-height:100vh; justify-content:center; animation: fadeIn .3s ease; }
-    .screen.active { display:flex; }
+    .screen {
+      position: relative; z-index: 1;
+      display: none; flex-direction: column; align-items: center; gap: 18px;
+      width: 100%; max-width: 520px; margin: 24px; padding: 30px 26px 38px;
+      background: rgba(15, 28, 20, .85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 26px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.5);
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      animation: fadeIn .3s ease;
+    }
+    .screen.active { display: flex; }
     @keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
 
     .eyebrow { font-size:0.72rem; letter-spacing:3px; color:var(--parchment-dim); text-transform:uppercase; font-weight:600; }
@@ -115,6 +136,26 @@
     .control-hint { width:100%; text-align:center; font-size:0.68rem; color:var(--parchment-dim); letter-spacing:.5px; }
     .control-hint b { color:var(--amber); }
 
+    .touch-controls { display:flex; justify-content:space-between; align-items:center; width:100%; padding:4px 6px 0; }
+    .dpad { display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:5px; }
+    .dpad-btn {
+      background:var(--moss-light); border:1.5px solid var(--canopy); border-radius:12px; color:var(--amber);
+      font-size:1.1rem; display:flex; align-items:center; justify-content:center; cursor:pointer;
+      touch-action:none; user-select:none; transition:background .1s, color .1s;
+    }
+    .dpad-btn.pressed { background:var(--amber); color:var(--ink); }
+    .dpad-up { grid-column:2; grid-row:1; }
+    .dpad-left { grid-column:1; grid-row:2; }
+    .dpad-center { grid-column:2; grid-row:2; }
+    .dpad-right { grid-column:3; grid-row:2; }
+    .dpad-down { grid-column:2; grid-row:3; }
+    .shoot-btn {
+      width:74px; height:74px; border-radius:50%; background:var(--amber); border:none; color:var(--ink);
+      font-size:1.5rem; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,.3); touch-action:none; user-select:none;
+      transition:transform .1s, box-shadow .1s;
+    }
+    .shoot-btn:active, .shoot-btn.pressed { transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,.3); background:#f0b35a; }
+
     .countdown-overlay {
       position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
       background:rgba(14,27,20,.82); z-index:10; gap:8px;
@@ -179,10 +220,59 @@
     .animal-chip-points { width:64px; }
     .animal-chip-points input { padding:6px 8px; font-size:0.8rem; text-align:center; }
 
-    @media (max-width:420px) { #arena { height:300px; } .title { font-size:2rem; } .form-grid { grid-template-columns:1fr; } }
+    @media (max-width:420px) {
+      #arena { height:300px; }
+      .title { font-size:2rem; }
+      .form-grid { grid-template-columns:1fr; }
+      .screen { margin:12px; padding:22px 16px 30px; max-height:calc(100vh - 24px); }
+    }
   </style>
 </head>
 <body>
+
+<div id="bgForest" aria-hidden="true">
+  <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice">
+    <defs>
+      <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#1b2e22"/>
+        <stop offset="55%" stop-color="#142219"/>
+        <stop offset="100%" stop-color="#0E1B14"/>
+      </linearGradient>
+      <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#E8A33D" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#E8A33D" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <rect width="800" height="600" fill="url(#skyGrad)"/>
+    <circle cx="640" cy="110" r="90" fill="url(#moonGlow)"/>
+    <circle cx="640" cy="110" r="34" fill="#F3ECD8" opacity="0.9"/>
+
+    <circle class="firefly" cx="120" cy="260" r="3" fill="#E8A33D" style="animation-delay:0s"/>
+    <circle class="firefly" cx="540" cy="340" r="2.4" fill="#E8A33D" style="animation-delay:.8s"/>
+    <circle class="firefly" cx="300" cy="200" r="2.6" fill="#E8A33D" style="animation-delay:1.6s"/>
+    <circle class="firefly" cx="700" cy="420" r="3" fill="#E8A33D" style="animation-delay:.4s"/>
+    <circle class="firefly" cx="180" cy="460" r="2.2" fill="#E8A33D" style="animation-delay:2.2s"/>
+
+    <path d="M0,380 Q100,330 200,360 T400,350 T600,370 T800,340 L800,600 L0,600 Z" fill="#1E3528" opacity="0.85"/>
+
+    <g fill="#2E4F3A" opacity="0.9">
+      <ellipse cx="90" cy="430" rx="110" ry="70"/>
+      <ellipse cx="260" cy="410" rx="130" ry="80"/>
+      <ellipse cx="480" cy="430" rx="140" ry="75"/>
+      <ellipse cx="680" cy="415" rx="120" ry="78"/>
+    </g>
+
+    <g fill="#16291E">
+      <ellipse cx="40" cy="520" rx="160" ry="100"/>
+      <ellipse cx="300" cy="540" rx="190" ry="95"/>
+      <ellipse cx="560" cy="530" rx="180" ry="100"/>
+      <ellipse cx="800" cy="520" rx="160" ry="100"/>
+    </g>
+    <rect x="0" y="560" width="800" height="40" fill="#0E1B14"/>
+  </svg>
+</div>
+
 
 <!-- ── START SCREEN ── -->
 <div id="startScreen" class="screen active">
@@ -231,6 +321,19 @@
   <button class="btn secondary" id="levelBackBtn">Kembali ke Menu</button>
 </div>
 
+<!-- ── CONTROL CHOICE SCREEN ── -->
+<div id="controlSelectScreen" class="screen">
+  <div style="text-align:center">
+    <div class="eyebrow">sebelum mulai</div>
+    <div class="title small">Pilih Kontrol</div>
+  </div>
+  <div class="divider"></div>
+  <div class="rules" style="text-align:center;">Kamu mau main pakai apa untuk level ini?</div>
+  <button class="btn primary" id="chooseKeyboardBtn">💻 Komputer — Keyboard</button>
+  <button class="btn primary" id="chooseTouchBtn">📱 Mobile — Tombol Sentuh</button>
+  <button class="btn secondary" id="controlBackBtn">Kembali ke Pilih Level</button>
+</div>
+
 <!-- ── GAME SCREEN ── -->
 <div id="gameScreen" class="screen">
   <div class="player-badge">Pemain: <span id="playerBadge">—</span></div>
@@ -249,7 +352,17 @@
     </div>
   </div>
   <div id="arena"></div>
-  <div class="control-hint">Arahkan dengan <b>↑ ↓ ← →</b>, tembak dengan <b>Spasi</b></div>
+  <div class="control-hint">Keyboard: <b>↑ ↓ ← →</b> arah, <b>Spasi</b> tembak — atau pakai tombol di bawah</div>
+  <div class="touch-controls">
+    <div class="dpad">
+      <button class="dpad-btn dpad-up" data-dir="ArrowUp" aria-label="Atas">▲</button>
+      <button class="dpad-btn dpad-left" data-dir="ArrowLeft" aria-label="Kiri">◀</button>
+      <div class="dpad-center"></div>
+      <button class="dpad-btn dpad-right" data-dir="ArrowRight" aria-label="Kanan">▶</button>
+      <button class="dpad-btn dpad-down" data-dir="ArrowDown" aria-label="Bawah">▼</button>
+    </div>
+    <button class="shoot-btn" id="shootBtn" aria-label="Tembak">🎯</button>
+  </div>
 </div>
 
 <!-- ── RESULT SCREEN ── -->
@@ -407,13 +520,14 @@
 
   // ── DOM ──
   const screens = {
-    start:       document.getElementById('startScreen'),
-    login:       document.getElementById('loginScreen'),
-    levelSelect: document.getElementById('levelSelectScreen'),
-    game:        document.getElementById('gameScreen'),
-    result:      document.getElementById('resultScreen'),
-    devLogin:    document.getElementById('devLoginScreen'),
-    dev:         document.getElementById('devScreen'),
+    start:         document.getElementById('startScreen'),
+    login:         document.getElementById('loginScreen'),
+    levelSelect:   document.getElementById('levelSelectScreen'),
+    controlSelect: document.getElementById('controlSelectScreen'),
+    game:          document.getElementById('gameScreen'),
+    result:        document.getElementById('resultScreen'),
+    devLogin:      document.getElementById('devLoginScreen'),
+    dev:           document.getElementById('devScreen'),
   };
 
   const arena         = document.getElementById('arena');
@@ -426,6 +540,8 @@
   let currentPlayer = '';
   let allLevels = [];
   let currentLevel = null;
+  let pendingLevel = null;
+  let controlMode = 'keyboard'; // 'keyboard' | 'touch'
   let levelScore = 0, lives = 0;
   let activeAnimals = [];
   let gameEnded = true;
@@ -551,7 +667,7 @@
     el.querySelectorAll('.level-card').forEach(card => {
       card.addEventListener('click', () => {
         const lv = levels.find(l => l.id === card.dataset.id);
-        if (lv) startLevel(lv);
+        if (lv) { pendingLevel = lv; showScreen('controlSelect'); }
       });
     });
   }
@@ -784,6 +900,25 @@
   });
   document.addEventListener('keyup', (e) => { keysDown.delete(e.key); });
 
+  // ── Touch / on-screen controls (mobile) ──
+  document.querySelectorAll('.dpad-btn[data-dir]').forEach(btn => {
+    const dir = btn.dataset.dir;
+    const press = (e) => { e.preventDefault(); keysDown.add(dir); btn.classList.add('pressed'); };
+    const release = () => { keysDown.delete(dir); btn.classList.remove('pressed'); };
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointerleave', release);
+    btn.addEventListener('pointercancel', release);
+  });
+  const shootBtn = document.getElementById('shootBtn');
+  shootBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    shootBtn.classList.add('pressed');
+    shootAtCrosshair();
+  });
+  shootBtn.addEventListener('pointerup', () => shootBtn.classList.remove('pressed'));
+  shootBtn.addEventListener('pointerleave', () => shootBtn.classList.remove('pressed'));
+
   function spawnBurst(cx, cy, type) {
     const b = document.createElement('div');
     b.className = 'burst ' + type;
@@ -907,6 +1042,8 @@
 
     document.getElementById('playerBadge').textContent = currentPlayer;
     document.getElementById('levelLabel').textContent = level.name;
+    document.querySelector('.control-hint').style.display = (controlMode === 'keyboard') ? 'block' : 'none';
+    document.querySelector('.touch-controls').style.display = (controlMode === 'touch') ? 'flex' : 'none';
     updateGameHUD();
     showScreen('game');
 
@@ -972,6 +1109,17 @@
 
   // ── Events: Level select ──
   document.getElementById('levelBackBtn').addEventListener('click', () => showScreen('start'));
+
+  // ── Events: Control choice (Komputer / Mobile) ──
+  document.getElementById('chooseKeyboardBtn').addEventListener('click', () => {
+    controlMode = 'keyboard';
+    if (pendingLevel) startLevel(pendingLevel);
+  });
+  document.getElementById('chooseTouchBtn').addEventListener('click', () => {
+    controlMode = 'touch';
+    if (pendingLevel) startLevel(pendingLevel);
+  });
+  document.getElementById('controlBackBtn').addEventListener('click', () => showScreen('levelSelect'));
 
   // ── Events: Result screen ──
   document.getElementById('replayBtn').addEventListener('click', () => startLevel(currentLevel));
