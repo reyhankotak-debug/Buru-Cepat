@@ -133,11 +133,8 @@
     .crosshair.firing .ring { animation: crosshairPulse .25s ease; }
     @keyframes crosshairPulse { 0%{ transform:scale(1); opacity:1;} 50%{ transform:scale(1.45); opacity:.35;} 100%{ transform:scale(1); opacity:1;} }
 
-    .control-hint1 { width:100%; text-align:center; font-size:0.68rem; color:var(--parchment-dim); letter-spacing:.5px; }
-    .control-hint1 b { color:var(--amber); }
-
-    .control-hint2 { width:100%; text-align:center; font-size:0.68rem; color:var(--parchment-dim); letter-spacing:.5px; }
-    .control-hint2 b { color:var(--amber); }
+    .control-hint { width:100%; text-align:center; font-size:0.68rem; color:var(--parchment-dim); letter-spacing:.5px; }
+    .control-hint b { color:var(--amber); }
 
     .touch-controls { display:flex; justify-content:space-between; align-items:center; width:100%; padding:4px 6px 0; }
     .dpad { display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:5px; }
@@ -355,8 +352,7 @@
     </div>
   </div>
   <div id="arena"></div>
-  <div class="control-hint1">Keyboard: <b>↑ ↓ ← →</b> arah, <b>Spasi</b> tembak</div>
-  <div class="control-hint2">Tombol Sentuh: Gunakan tombol di bawah untuk bermain</div>
+  <div class="control-hint">Keyboard: <b>↑ ↓ ← →</b> arah, <b>Spasi</b> tembak — atau pakai tombol di bawah</div>
   <div class="touch-controls">
     <div class="dpad">
       <button class="dpad-btn dpad-up" data-dir="ArrowUp" aria-label="Atas">▲</button>
@@ -462,6 +458,13 @@
           <div class="input-hint">Makin kecil = hewan baru muncul makin cepat setelah satu selesai.</div>
         </div>
         <div class="input-group">
+          <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+            <input type="checkbox" id="lvMissPenalty" style="width:auto; accent-color:var(--coral);" checked />
+            <span style="font-size:0.82rem; font-weight:600;">Nyawa berkurang jika tembakan meleset</span>
+          </label>
+          <div class="input-hint">Jika dimatikan, menembak ke tempat kosong tidak mengurangi nyawa — hewan yang lewat tanpa ditembak tetap selalu mengurangi nyawa.</div>
+        </div>
+        <div class="input-group">
           <div class="input-label">Pilih Hewan & Poin</div>
           <div class="animal-picker" id="animalPicker"></div>
         </div>
@@ -518,7 +521,7 @@
   const DEFAULT_LEVEL = {
     id: '_default', name: 'Level Latihan', order: 0,
     targetScore: 12, lives: 3, concurrentCount: 1,
-    spawnInterval: 500, visibleDuration: 1900,
+    spawnInterval: 500, visibleDuration: 1900, missPenalty: true,
     animals: [{ typeId: 'rabbit', points: 1 }, { typeId: 'frog', points: 1 }, { typeId: 'squirrel', points: 1 }]
   };
 
@@ -689,6 +692,7 @@
           <div class="level-name">${lv.name}</div>
           <div class="level-meta">
             <span>🎯 ${lv.targetScore}</span><span>❤️ ${lv.lives}</span><span>👥 ${lv.concurrentCount}x</span>
+            <span>${lv.missPenalty !== false ? '⚠️ Miss = -nyawa' : '✅ Miss aman'}</span>
             <div class="level-animals">${(lv.animals || []).map(a => animalChipMini(a.typeId)).join('')}</div>
           </div>
           ${lv.id === '_default'
@@ -760,6 +764,7 @@
     document.getElementById('lvConcurrent').value = level ? level.concurrentCount : 1;
     document.getElementById('lvVisible').value = level ? level.visibleDuration : 2000;
     document.getElementById('lvSpawnInterval').value = level ? level.spawnInterval : 500;
+    document.getElementById('lvMissPenalty').checked = level ? (level.missPenalty !== false) : true;
     const selectedMap = {};
     if (level && level.animals) level.animals.forEach(a => selectedMap[a.typeId] = a.points);
     buildAnimalPicker(selectedMap);
@@ -785,6 +790,7 @@
     const concurrentCount = parseInt(document.getElementById('lvConcurrent').value);
     const visibleDuration = parseInt(document.getElementById('lvVisible').value);
     const spawnInterval = parseInt(document.getElementById('lvSpawnInterval').value);
+    const missPenalty = document.getElementById('lvMissPenalty').checked;
     const checks = Array.from(document.querySelectorAll('.animal-check')).filter(c => c.checked);
     const animals = checks.map(c => ({
       typeId: c.dataset.id,
@@ -800,7 +806,7 @@
     if (!spawnInterval || spawnInterval < 100) { errEl.textContent = 'Jeda spawn minimal 100ms.'; return; }
     if (!animals.length) { errEl.textContent = 'Pilih minimal 1 hewan.'; return; }
 
-    const payload = { name, order, targetScore, lives: levelLives, concurrentCount, visibleDuration, spawnInterval, animals };
+    const payload = { name, order, targetScore, lives: levelLives, concurrentCount, visibleDuration, spawnInterval, missPenalty, animals };
     const btn = document.getElementById('saveLevelBtn');
     btn.disabled = true; btn.textContent = 'Menyimpan...';
     try {
@@ -880,6 +886,14 @@
     crosshairEl.classList.add('firing');
   }
 
+  function handleMissedShot() {
+    lives--;
+    updateGameHUD();
+    arena.classList.add('miss');
+    setTimeout(() => arena.classList.remove('miss'), 350);
+    if (lives <= 0) endLevel(false);
+  }
+
   function shootAtCrosshair() {
     if (gameEnded) return;
     triggerCrosshairPulse();
@@ -890,7 +904,8 @@
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= HIT_RADIUS && dist < nearestDist) { nearest = item; nearestDist = dist; }
     }
-    if (nearest) resolveHit(nearest);
+    if (nearest) { resolveHit(nearest); return; }
+    if (currentLevel.missPenalty !== false) handleMissedShot();
   }
 
   document.addEventListener('keydown', (e) => {
