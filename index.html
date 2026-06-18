@@ -133,8 +133,11 @@
     .crosshair.firing .ring { animation: crosshairPulse .25s ease; }
     @keyframes crosshairPulse { 0%{ transform:scale(1); opacity:1;} 50%{ transform:scale(1.45); opacity:.35;} 100%{ transform:scale(1); opacity:1;} }
 
-    .control-hint { width:100%; text-align:center; font-size:0.68rem; color:var(--parchment-dim); letter-spacing:.5px; }
-    .control-hint b { color:var(--amber); }
+    .control-hint1 { width:100%; text-align:center; font-size:0.68rem; color:var(--parchment-dim); letter-spacing:.5px; }
+    .control-hint1 b { color:var(--amber); }
+
+    .control-hint2 { width:100%; text-align:center; font-size:0.68rem; color:var(--parchment-dim); letter-spacing:.5px; }
+    .control-hint2 b { color:var(--amber); }
 
     .touch-controls { display:flex; justify-content:space-between; align-items:center; width:100%; padding:4px 6px 0; }
     .dpad { display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:5px; }
@@ -352,7 +355,8 @@
     </div>
   </div>
   <div id="arena"></div>
-  <div class="control-hint">Keyboard: <b>↑ ↓ ← →</b> arah, <b>Spasi</b> tembak — atau pakai tombol di bawah</div>
+  <div class="control-hint1">Keyboard: <b>↑ ↓ ← →</b> arah, <b>Spasi</b> tembak</div>
+  <div class="control-hint2">Tombol Sentuh: Gunakan tombol di bawah untuk bermain</div>
   <div class="touch-controls">
     <div class="dpad">
       <button class="dpad-btn dpad-up" data-dir="ArrowUp" aria-label="Atas">▲</button>
